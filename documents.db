@@ -1,0 +1,5 @@
+1	AI	notes	1795401877	Artificial intelligence (AI) is the capability of computer systems to perform tasks that typically require human intelligence, such as learning from data, recognizing patterns, solving problems, understanding language	
+2	Linked List	Notes	1795401921	A linked list is a linear data structure where elements-called nodes-are stored in non-contiguous memory locations and connected using pointers.	
+3	OOPS in C++	Notes	1795401973	Object-Oriented Programming (OOP) in C++ is a programming paradigm that organizes software around classes and objects rather than standalone functions and logic.	
+4	Singly Linked List	Notes	1795402104	A singly linked list is a linear data structure made of a sequence of nodes, where each node stores data and a pointer (reference) to the next node in the chain.	
+6	Singly Circular Linked List	Notes	1795402429	A singly circular linked list is a variation of a linked list in which the last node points back to the first node instead of NULL, forming a continuous closed loop	
