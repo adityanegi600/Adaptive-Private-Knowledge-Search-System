@@ -1,6 +1,6 @@
 #pragma once
-#include "Document [Aditya Negi].h"
-#include "Tokenizer [Aryan Panwar].h"
+#include "Document.h"
+#include "Tokenizer.h"
 #include <cmath>
 #include <cstddef>
 #include <unordered_map>
