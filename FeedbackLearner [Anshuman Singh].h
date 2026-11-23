@@ -1,63 +1,59 @@
-#pragma once
-#include "Config [Arshveer Singh].h"
-#include "Ranker [Anshuman Singh].h"
-#include "Tokenizer [Aryan Panwar].h"
-#include <algorithm>
+#pragma once                                    // Prevents file from being included twice
+#include "Config.h"
+#include "Ranker.h"                             // To update document boosts and word weights
+#include "Tokenizer.h"                          // To split search queries into words
+#include <algorithm>                            // For std::max and std::min
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace rar {
 
+// Stores ONE user feedback rating
 struct FeedbackEvent {
-    int documentId{0};
-    bool useful{false};
-    std::string query;
-    std::string timestamp;
-    FeedbackEvent() : documentId(0), useful(false) {}
-    FeedbackEvent(int id, bool isUseful, const std::string& q, const std::string& ts)
-        : documentId(id), useful(isUseful), query(q), timestamp(ts) {}
+    int documentId{0};                          // Rated document ID
+    bool useful{false};                         // true = useful, false = not useful
+    std::string query, timestamp;               // Search query & time of rating
+    FeedbackEvent() = default;                  // Default empty constructor
+    FeedbackEvent(int id, bool u, const std::string& q, const std::string& ts)
+        : documentId(id), useful(u), query(q), timestamp(ts) {} // 4-value constructor
 };
 
-// Lightweight online ranking adjustment. This is heuristic feedback, not model training.
+// Adjusts Ranker scores based on user feedback ("Reflect" step)
 class FeedbackLearner {
 private:
-    Ranker& ranker_;
-    const Tokenizer& tokenizer_;
-    std::unordered_map<int, double> documentRelevance_;
-    std::vector<FeedbackEvent> events_;
-    double learningRate_{0.05};
+    Ranker& ranker_;                            // Reference to Ranker
+    const Tokenizer& tokenizer_;                // Reference to Tokenizer
+    std::unordered_map<int, double> documentRelevance_; // Saved boost per doc ID
+    std::vector<FeedbackEvent> events_;         // List of all feedback events
+    double learningRate_{0.05};                 // Speed of word weight change
 
 public:
-    FeedbackLearner(Ranker& ranker, const Tokenizer& tokenizer)
-        : ranker_(ranker), tokenizer_(tokenizer) {}
+    FeedbackLearner(Ranker& r, const Tokenizer& t) : ranker_(r), tokenizer_(t) {} // Constructor
 
-    void setLearningRate(double value) {
-        learningRate_ = std::max(0.001, std::min(value, 0.5));
-    }
+    // Set/get learning rate (kept between 0.001 and 0.5)
+    void setLearningRate(double v) { learningRate_ = std::max(0.001, std::min(v, 0.5)); }
     double learningRate() const { return learningRate_; }
 
-    void record(int documentId, const std::string& query, bool useful,
-                const std::string& timestamp) {
-        const double delta = useful ? 1.0 : -0.5;
-        documentRelevance_[documentId] += delta;
-        ranker_.setDocumentBoost(documentId, documentRelevance_[documentId]);
-        const double termDelta = useful ? learningRate_ : -learningRate_ * 0.5;
-        for (const auto& term : tokenizer_.tokenize(query, true)) {
-            const double next = ranker_.termWeight(term) + termDelta;
-            ranker_.setTermWeight(term, next);
-        }
-        events_.push_back({documentId, useful, query, timestamp});
+    // Main function: updates doc boost, updates word weights, and saves the event
+    void record(int id, const std::string& q, bool useful, const std::string& ts) {
+        documentRelevance_[id] += useful ? 1.0 : -0.5;          // +1.0 if useful, -0.5 if not
+        ranker_.setDocumentBoost(id, documentRelevance_[id]);   // Send new boost to Ranker
+
+        double delta = useful ? learningRate_ : -learningRate_ * 0.5; // Word weight change
+        for (const auto& w : tokenizer_.tokenize(q, true))      // Loop each query word
+            ranker_.setTermWeight(w, ranker_.termWeight(w) + delta); // Update word weight
+
+        events_.push_back({id, useful, q, ts});                 // Save to history
     }
 
+    // Getters used when saving to disk
     const std::unordered_map<int, double>& relevanceMap() const { return documentRelevance_; }
     const std::vector<FeedbackEvent>& events() const { return events_; }
 
-    void restoreDocumentRelevance(int id, double value) {
-        documentRelevance_[id] = value;
-        ranker_.setDocumentBoost(id, value);
-    }
-    void restoreEvent(const FeedbackEvent& event) { events_.push_back(event); }
+    // Restorers used when loading from disk at startup
+    void restoreDocumentRelevance(int id, double v) { documentRelevance_[id] = v; ranker_.setDocumentBoost(id, v); }
+    void restoreEvent(const FeedbackEvent& e) { events_.push_back(e); }
 };
 
 } // namespace rar
